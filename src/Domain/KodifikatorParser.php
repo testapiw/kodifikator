@@ -1,6 +1,6 @@
 <?php
 
-namespace Kodifikator\Service;
+namespace Kodifikator\Domain;
 
 use GuzzleHttp\Client;
 use Symfony\Component\DomCrawler\Crawler;
@@ -39,7 +39,7 @@ class KodifikatorParser
      */
     public function getLatestLink(): ?string
     {
-        $links = $this->fetchAndParse();
+        $links = $this->process();
 
         // Assuming keys are sorted by insertion order (first is the latest)
         $latestSet = reset($links); 
@@ -51,22 +51,6 @@ class KodifikatorParser
 
         return null;
     }
-
-    /**
-     * Converts a possibly relative URL to an absolute URL based on the base site URL.
-     *
-     * @param string $href URL that may be relative or absolute
-     * @return string Absolute URL
-     */
-    private function makeAbsoluteUrl(string $href): string
-    {
-        if (str_starts_with($href, 'http')) {
-            return $href;
-        }
-
-        return 'https://mindev.gov.ua' . $href;
-    }
-
 
     /**
      * Fetches the codifier webpage and parses document links grouped by date/title.
@@ -85,17 +69,9 @@ class KodifikatorParser
      *                   ...
      *               ]
      */
-    public function fetchAndParse(): array
+    public function process(): array
     {
-        $client = new Client();
-        $response = $client->request('GET', $this->url);
-
-        if ($response->getStatusCode() !== 200) {
-            // You can add logging here if needed
-            return false;
-        }
-
-        $html = $response->getBody()->getContents();
+        $html = $this->fetchHtml();
         $crawler = new Crawler($html);
 
         $contentDiv = $crawler->filter('div.editor-content');
@@ -128,11 +104,13 @@ class KodifikatorParser
             foreach ($links as $link) {
                 $linkCrawler = new Crawler($link);
                 $href = urldecode($linkCrawler->attr('href'));
-                $text = $linkCrawler->text();
                 $extension = $linkCrawler->attr('data-extension') ?: strtolower(pathinfo(parse_url($href, PHP_URL_PATH), PATHINFO_EXTENSION));
-                $size = $linkCrawler->attr('data-size');
 
                 if (!empty($href) && in_array($extension, ['pdf', 'xlsx', 'docx'])) {
+                    $text = $this->sanitizeText($linkCrawler->text());
+                    $size = $this->sanitizeSize($linkCrawler->attr('data-size'));
+                    $href = $this->makeAbsoluteUrl($href);
+
                     $result[$currentTitle][$extension] = [
                         'text' => $text,
                         'href' => $href,
@@ -143,5 +121,61 @@ class KodifikatorParser
         });
 
         return $result;
+    }
+
+    /**
+     * Fetches the HTML content of the codifier page.
+     *
+     * @return string|false HTML content on success, false on failure
+     */
+    private function fetchHtml(): string|false
+    {
+        $client = new Client();
+       
+        try {
+            $response = $client->request('GET', $this->url);
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Failed to fetch HTML: ' . $e->getMessage());
+        }
+
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException('Unexpected HTTP status: ' . $response->getStatusCode());
+        }
+
+        return $response->getBody()->getContents();
+    }
+
+
+    private function sanitizeText(string $text): string
+    {
+        $clean = strip_tags($text);
+        $clean = trim(preg_replace('/\s+/', ' ', $clean));
+        return $clean;
+    }
+
+    private function sanitizeSize(?string $size): ?string
+    {
+        if ($size === null) {
+            return null;
+        }
+
+        $clean = preg_replace('/\D+/', '', $size);
+        return $clean === '' ? null : $clean;
+    }
+
+    /**
+     * Converts a possibly relative URL to an absolute URL based on the base site URL.
+     *
+     * @param string $href URL that may be relative or absolute
+     * @return string Absolute URL
+     */
+    private function makeAbsoluteUrl(string $href): string
+    {
+        $href = strip_tags($href);
+        if (str_starts_with($href, 'http')) {
+            return $href;
+        }
+
+        return 'https://mindev.gov.ua' . $href;
     }
 }

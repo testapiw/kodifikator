@@ -2,6 +2,7 @@
 
 namespace Kodifikator\Service;
 
+use Kodifikator\Domain\KodifikatorParser;
 use Kodifikator\Entity\KodifikatorUpload;
 use Doctrine\ORM\EntityManagerInterface;
 use GuzzleHttp\Client;
@@ -54,7 +55,7 @@ class KodifikatorUploader
      */
     public function fetch(): void
     {
-        $links = $this->parser->fetchAndParse();
+        $links = $this->parser->process();
         $repo = $this->em->getRepository(KodifikatorUpload::class);
 
         foreach ($links as $date => $documents) {
@@ -149,7 +150,7 @@ class KodifikatorUploader
 
         $upload
             ->setStatus('downloaded')
-            ->setUpdatedAtAt(new \DateTimeImmutable());
+            ->setUpdatedAt(new \DateTimeImmutable());
 
         $this->em->persist($upload);
     }

@@ -30,7 +30,7 @@ class KodifikatorImport
     public function import(): void
     {
         $start = microtime(true);
-        $this->logger->info('Начинается импорт кодфикатора');
+        $this->logger->info('Починається імпорт кодифікатора');
         
         $filepath = $this->getFile();
         $this->logger->info('Обрабатывается файл', ['file' => $filepath]);
@@ -39,15 +39,15 @@ class KodifikatorImport
         /** @var KodifikatorRepository $repo */
         $repo = $this->em->getRepository(Kodifikator::class);
         $processedCount = $repo->upsertBatch($this->rowGenerator($filepath));
-        $this->logger->info("Обработано записей: $processedCount");
+        $this->logger->info("Оброблено записів: $processedCount");
 
         $this->setStatusUpdated();
 
         $importTime = microtime(true) - $importStart;
-        $this->logger->info("Импорт завершён за {$importTime} секунд");
+        $this->logger->info("Імпорт завершено за {$importTime} секунд");
 
         $totalTime = microtime(true) - $start;
-        $this->logger->info("Полное время выполнения скрипта: {$totalTime} секунд");
+        $this->logger->info("Загальний час виконання скрипта: {$totalTime} секунд");
     }
 
     private function getFile()

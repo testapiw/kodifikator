@@ -73,7 +73,7 @@ services:
         arguments:
             $storagePath: '%env(resolve:KODIFIKATOR_PATH)%'
 
-    Kodifikator\Service\KodifikatorParser: ~
+    Kodifikator\Domain\KodifikatorParser: ~
 
     # Autowire other classes (e.g., Console, Controller, etc.)
     Kodifikator\:

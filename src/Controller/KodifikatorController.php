@@ -3,7 +3,7 @@
 namespace Kodifikator\Controller;
 
 
-use Kodifikator\Service\KodifikatorParser;
+use Kodifikator\Domain\KodifikatorParser;
 use Kodifikator\Service\KodifikatorUploader;
 use Kodifikator\Service\KodifikatorImport;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,7 +37,7 @@ class KodifikatorController extends AbstractController
     #[Route('/kodifikator/parse', name: 'kodifikator_parse')]
     public function parse(KodifikatorParser $parser): JsonResponse
     {
-        $data = $parser->fetchAndParse();
+        $data = $parser->process();
 
         return $this->json($data);
     }
