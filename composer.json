@@ -1,5 +1,5 @@
 {
-    "name": "utils/kodifikator",
+    "name": "addon/kodifikator",
     "description": "Parser and importer for the Ukrainian Codifier of Administrative-Territorial Units",
     "type": "library",
     "license": "CC-BY-4.0",
