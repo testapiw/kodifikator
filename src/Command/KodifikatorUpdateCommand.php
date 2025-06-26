@@ -21,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 #[AsCommand(
     name: 'kodifikator:update',
-    description: 'Парсинг и загрузка свежего XLSX кодификатора.',
+    description: 'Парсинг та завантаження нового XLSX кодифікатора',
 )]
 class KodifikatorUpdateCommand extends Command
 {
