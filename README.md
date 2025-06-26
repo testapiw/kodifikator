@@ -61,7 +61,7 @@ KODIFIKATOR_PATH="var/kodifikator"
 services:
     # Automatically register Doctrine repositories
     Kodifikator\Repository\:
-        resource: '../utils/kodifikator/src/Repository'
+        resource: '../addon/kodifikator/src/Repository'
         tags: ['doctrine.repository_service']
 
     # Register services with parameters
@@ -73,12 +73,14 @@ services:
         arguments:
             $storagePath: '%env(resolve:KODIFIKATOR_PATH)%'
 
+    Kodifikator\Service\KodifikatorParser: ~
+
     # Autowire other classes (e.g., Console, Controller, etc.)
     Kodifikator\:
-        resource: '%kernel.project_dir%/vendor/utils/kodifikator/src/Repository'
+        resource: '%kernel.project_dir%/vendor/addon/kodifikator/src/Repository'
         exclude:
-            - '%kernel.project_dir%/vendor/utils/kodifikator/src/Entity'
-            - '%kernel.project_dir%/vendor/utils/kodifikator/src/Repository'
+            - '%kernel.project_dir%/vendor/addon/kodifikator/src/Entity'
+            - '%kernel.project_dir%/vendor/addon/kodifikator/src/Repository'
 ```
 
 3. Register Doctrine mapping in config/packages/doctrine.yaml:
@@ -90,7 +92,7 @@ doctrine:
             Kodifikator:
                 is_bundle: false
                 type: attribute
-                dir:  '%kernel.project_dir%/vendor/utils/kodifikator/src/Entity'
+                dir:  '%kernel.project_dir%/vendor/addon/kodifikator/src/Entity'
                 prefix: 'Kodifikator\Entity'
                 alias: Kodifikator
 ```
@@ -110,8 +112,8 @@ sudo chown www-data:www-data var/kodifikator
 Install via Composer:
 
 ```bash
-composer require your-vendor/kodifikator
-
+composer require addon/kodifikator
+```
 ---
 
 ## Usage

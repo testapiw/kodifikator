@@ -1,9 +1,0 @@
-doctrine:
-    orm:
-        mappings:
-            Kodifikator:
-                is_bundle: false
-                type: attribute
-                dir:  '%kernel.project_dir%/vendor/utils/kodifikator/src/Entity'
-                prefix: 'Kodifikator\Entity'
-                alias: Kodifikator
