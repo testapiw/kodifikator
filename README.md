@@ -3,7 +3,7 @@
 **Parser and importer for the Codifier of Administrative-Territorial Units and Territorial Communities of Ukraine.**
 
 This Symfony-based project automates the process of parsing, downloading, and importing the official Ukrainian  
-**Кодифікатор адміністративно-територіальних одиниць та територій територіальних громад**  
+**Кодифікатор адміністративно-територіальних одиниць та територій територіальних громад КАТОТТГ**  
 into your application.
 
 ---
