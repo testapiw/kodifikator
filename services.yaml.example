@@ -1,0 +1,21 @@
+services:
+    # Automatically register Doctrine repositories
+    Kodifikator\Repository\:
+        resource: '../utils/kodifikator/src/Repository'
+        tags: ['doctrine.repository_service']
+
+    # Register services with parameters
+    Kodifikator\Service\KodifikatorUploader:
+        arguments:
+            $storagePath: '%env(resolve:KODIFIKATOR_PATH)%'
+
+    Kodifikator\Service\KodifikatorImport:
+        arguments:
+            $storagePath: '%env(resolve:KODIFIKATOR_PATH)%'
+
+    # Autowire other classes (e.g., Console, Controller, etc.)
+    Kodifikator\:
+        resource: '%kernel.project_dir%/vendor/utils/kodifikator/src/Repository'
+        exclude:
+            - '%kernel.project_dir%/vendor/utils/kodifikator/src/Entity'
+            - '%kernel.project_dir%/vendor/utils/kodifikator/src/Repository'
