@@ -7,7 +7,6 @@ use Kodifikator\Entity\Kodifikator;
 use Kodifikator\Repository\KodifikatorRepository;
 use Psr\Log\LoggerInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use Doctrine\ORM\EntityManagerInterface;
 use Kodifikator\Entity\KodifikatorUpload;
 
 /**
@@ -19,7 +18,7 @@ class KodifikatorImport
     private string $uploadUrl = '';
 
     public function __construct(
-        private EntityManagerInterface $em,
+        private KodifikatorManager $uploadManager,
         private string $storagePath,
         private LoggerInterface $logger 
     ) {
@@ -32,45 +31,49 @@ class KodifikatorImport
         $start = microtime(true);
         $this->logger->info('Починається імпорт кодифікатора');
         
-        $filepath = $this->getFile();
-        $this->logger->info('Обрабатывается файл', ['file' => $filepath]);
+        $upload = $this->uploadManager->findLatest();
+        if (!$upload) {
+            throw new \RuntimeException('No upload found');
+        }
 
-        $importStart = microtime(true);
-        /** @var KodifikatorRepository $repo */
-        $repo = $this->em->getRepository(Kodifikator::class);
-        $processedCount = $repo->upsertBatch($this->rowGenerator($filepath));
-        $this->logger->info("Оброблено записів: $processedCount");
+        if ($upload->getStatus() === 'updated') {
+            $this->logger->info('Файл вже імпортовано.', [
+                'xlsx' => $upload->getXlsxUrl(),
+                'date' => $upload->getDate(),
+            ]);
+            return;
+        }
 
-        $this->setStatusUpdated();
+        $filepath = $this->resolveFilePath($upload->getXlsxUrl());
+        $this->logger->info('Обробляється файл', ['file' => $filepath]);
 
-        $importTime = microtime(true) - $importStart;
-        $this->logger->info("Імпорт завершено за {$importTime} секунд");
+        $count = $this->uploadManager->import($this->rowGenerator($filepath));
+        $this->logger->info("Оброблено записів: $count");
 
-        $totalTime = microtime(true) - $start;
-        $this->logger->info("Загальний час виконання скрипта: {$totalTime} секунд");
+        $this->uploadManager->updateStatus($upload, 'updated');
+        $this->uploadManager->flush();
+
+        $elapsed = microtime(true) - $start;
+        $this->logger->info("Імпорт завершено за: {$elapsed} секунд");
     }
 
-    private function getFile()
+    
+    private function resolveFilePath(string $url): string
     {
-        $entity = $this->em->getRepository(KodifikatorUpload::class)
-            ->findOneBy([], ['updatedAt' => 'DESC']);
-
-        $this->uploadUrl = $entity->getXlsxUrl();
-
-        if (!$this->uploadUrl) {
+        if (!$url) {
             $this->logger->error('No uploaded Kodifikator XLSX file found.');
             throw new \RuntimeException('No uploaded Kodifikator XLSX file found.');
         }
 
-        $filename = basename(parse_url($this->uploadUrl, PHP_URL_PATH));
-        $filepath = $this->storagePath . $filename;
+        $filename = basename(parse_url($url, PHP_URL_PATH));
+        $path = $this->storagePath . $filename;
 
-        if (!file_exists($filepath)) {
-            $this->logger->error("File not found or not readable: $filepath");
-            throw new \RuntimeException("File not found: $filepath");
+        if (!file_exists($path)) {
+            $this->logger->error("File not found or not readable: $path");
+            throw new \RuntimeException("File not found: $path");
         }
 
-        return $filepath;
+        return $path;
     }
 
 
@@ -100,31 +103,14 @@ class KodifikatorImport
         }
     }
 
-    private function setStatusUpdated(): void
-    {
-        $entity = $this->em->getRepository(KodifikatorUpload::class)->findOneBy(['xlsxUrl' => $this->uploadUrl]);
-        
-        if (!$entity) {
-            $this->logger->error('No uploaded Kodifikator XLSX file found.');
-            throw new \RuntimeException('No uploaded Kodifikator XLSX file found.');
-        }
-
-        $entity->setStatus('updated');
-        $this->em->persist($entity);
-        $this->em->flush();
-
-        $this->em->clear();
-    }
-
-
     private function sanitize(?string $value): string
     {
         $value = (string) ($value ?? '');
 
         $value = preg_replace([
-            '/[\x00-\x1F\x7F]+/u',         // Удаляем управляющие символы
-            '/^\s+|\s+$/u',                // Обрезаем пробелы по краям
-            '/\s+/u'                       // Заменяем множественные пробелы одним
+            '/[\x00-\x1F\x7F]+/u',  // Remove control characters
+            '/^\s+|\s+$/u',               
+            '/\s+/u'                       
         ], [
             '', '', ' '
         ], $value);

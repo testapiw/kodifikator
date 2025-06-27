@@ -75,6 +75,8 @@ services:
 
     Kodifikator\Domain\KodifikatorParser: ~
 
+    Kodifikator\Service\KodifikatorManager: ~
+
     # Autowire other classes (e.g., Console, Controller, etc.)
     Kodifikator\:
         resource: '%kernel.project_dir%/vendor/addon/kodifikator/src/Repository'

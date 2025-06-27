@@ -4,7 +4,6 @@ namespace Kodifikator\Service;
 
 use Kodifikator\Domain\KodifikatorParser;
 use Kodifikator\Entity\KodifikatorUpload;
-use Doctrine\ORM\EntityManagerInterface;
 use GuzzleHttp\Client;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -38,7 +37,7 @@ class KodifikatorUploader
      * @param string $storagePath Path where XLSX files will be saved locally
      */
     public function __construct(
-        private EntityManagerInterface $em,
+        private KodifikatorManager $uploadManager,
         private KodifikatorParser $parser,
         private string $storagePath
     ) {
@@ -56,23 +55,27 @@ class KodifikatorUploader
     public function fetch(): void
     {
         $links = $this->parser->process();
-        $repo = $this->em->getRepository(KodifikatorUpload::class);
 
         foreach ($links as $date => $documents) {
             $xlsx = $documents['xlsx']['href'] ?? null;
 
-            if (!$xlsx|| $repo->findOneBy(['xlsxUrl' => $xlsx])) {
+            if (!$xlsx) {
+                // log
+                // throw new \InvalidArgumentException('Missing XLSX URL in document metadata.');
+                continue;
+            }
+
+            if ($this->uploadManager->findByXlsxUrl($xlsx)) {
                 // File already exists or no xlsx link found — skip
                 continue;
             }
 
-            $fileSaved = $this->downloadFiles($xlsx);
-            if ($fileSaved) {
-                $this->saveInfo($date, $documents);
+            if ($this->downloadFiles($xlsx)) {
+                $this->uploadManager->save($date, $documents);
             }
         }
 
-        $this->em->flush();
+        $this->uploadManager->flush();
     }
 
     /**
@@ -103,56 +106,17 @@ class KodifikatorUploader
             if ($response->getStatusCode() !== 200) {
                 return false;
             }
+
             $content = $response->getBody()->getContents();
-
             $fs->dumpFile($localPath, $content);
-
             chmod($localPath, 0640);
-        } catch (\Exception $e) {
+        } 
+        catch (\Exception $e) {
             // You can add logging here
             return false;
         }
      
         return true;
-    }
-
-
-    /**
-     * Saves metadata about the downloaded documents into the database.
-     *
-     * Creates or updates a KodifikatorUpload entity with URLs and status.
-     *
-     * @param string $date Title or date of the document set
-     * @param array $documents Array of document metadata, keys like 'xlsx', 'pdf', 'docx'
-     * @return void
-     */
-    private function saveInfo(string $date, array $documents): void
-    {
-        $xlsx = $documents['xlsx']['href'] ?? null;
-
-        if (!$xlsx) {
-            return;
-        }
-
-        $repo = $this->em->getRepository(KodifikatorUpload::class);
-
-        $upload = $repo->findOneBy(['xlsxUrl' => $xlsx]);
-
-        if (!$upload) {
-            $upload = new KodifikatorUpload();
-            $upload
-                ->setXlsxUrl($xlsx)
-                ->setPdfUrl($documents['pdf']['href'] ?? '')
-                ->setDocxUrl($documents['docx']['href'] ?? null)
-                ->setDescription("$date")
-                ->setDate($date);
-        }
-
-        $upload
-            ->setStatus('downloaded')
-            ->setUpdatedAt(new \DateTimeImmutable());
-
-        $this->em->persist($upload);
     }
 
 }

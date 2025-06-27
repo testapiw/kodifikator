@@ -41,15 +41,30 @@ class KodifikatorParser
     {
         $links = $this->process();
 
-        // Assuming keys are sorted by insertion order (first is the latest)
-        $latestSet = reset($links); 
+        // Отсортировать по дате, извлекая дату из ключа
+        uksort($links, function ($a, $b) {
+            $dateA = $this->extractDate($a);
+            $dateB = $this->extractDate($b);
+
+            return $dateB <=> $dateA; // Сортировка по убыванию (новые выше)
+        });
+
+        $latestSet = reset($links);
         foreach ($latestSet as $file) {
             if (strtolower($file['extension']) === 'xlsx') {
-                return $this->makeAbsoluteUrl($file['href']);
+                return $file['href'];
             }
         }
 
         return null;
+    }
+
+    private function extractDate(string $title): ?int
+    {
+        if (preg_match('/(\d{2})\.(\d{2})\.(\d{4})/', $title, $matches)) {
+            return (int)($matches[3] . $matches[2] . $matches[1]); // YYYYMMDD
+        }
+        return 0;
     }
 
     /**
@@ -83,12 +98,11 @@ class KodifikatorParser
         $contentDiv->filter('p')->each(function (Crawler $node) use (&$result, &$currentTitle) {
 
             // Check if the paragraph contains a <strong> element (title/date)
-            $strong = $node->filter('strong');
-            if ($strong->count() === 1) {
-                $text = trim($strong->text());
-
-                // If the text ends with a date format dd.mm.yyyy, consider it a title
-                if (preg_match('/\s\d{2}\.\d{2}\.\d{4}$/', $text)) {
+            $strongs = $node->filter('strong');
+            if ($strongs->count() > 0) {
+                $firstStrong = $strongs->eq(0);
+                $text = trim($firstStrong->text());
+                if (preg_match('/\d{2}\.\d{2}\.\d{4}/', $text, $matches)) {
                     $currentTitle = $text;
                     $result[$currentTitle] = [];
                 }
@@ -100,17 +114,20 @@ class KodifikatorParser
 
             // Find links inside the paragraph <p>
             $links = $node->filter('a');
-
             foreach ($links as $link) {
                 $linkCrawler = new Crawler($link);
                 $href = urldecode($linkCrawler->attr('href'));
                 $extension = $linkCrawler->attr('data-extension') ?: strtolower(pathinfo(parse_url($href, PHP_URL_PATH), PATHINFO_EXTENSION));
 
                 if (!empty($href) && in_array($extension, ['pdf', 'xlsx', 'docx'])) {
-                    $text = $this->sanitizeText($linkCrawler->text());
+
+                    $textLink = trim($linkCrawler->text());
+                    if (empty($textLink)) continue;
+
+                    $text = $this->sanitizeText($textLink);
                     $size = $this->sanitizeSize($linkCrawler->attr('data-size'));
                     $href = $this->makeAbsoluteUrl($href);
-
+                    
                     $result[$currentTitle][$extension] = [
                         'text' => $text,
                         'href' => $href,
