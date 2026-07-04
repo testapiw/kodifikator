@@ -192,9 +192,9 @@ This project uses publicly available government data under the
 [2026-07-04] - Local File Processing Implementation
 ### Added
 
-    - KodifikatorLocalImporter service: Developed to mock the application registry state for local files. It injects a virtual record into the local documents database, skipping the external parsing/download pipeline while seamlessly redirecting execution to the primary high-performance core parsing system (KodifikatorImport).
+    KodifikatorLocalImporter service: Developed to mock the application registry state for local files. It injects a virtual record into the local documents database, skipping the external parsing/download pipeline while seamlessly redirecting execution to the primary high-performance core parsing system (KodifikatorImport).
 
-    - KodifikatorImportLocalCommand Symfony command: Created a flexible CLI tool (kodifikator:import-local) accepting localized targets and descriptive metadata arguments, complete with localized (Ukrainian) configuration hints.
+    KodifikatorImportLocalCommand Symfony command: Created a flexible CLI tool (kodifikator:import-local) accepting localized targets and descriptive metadata arguments, complete with localized (Ukrainian) configuration hints.
 
 
 ### Why these changes were introduced
